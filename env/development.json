@@ -1,0 +1,4 @@
+{
+  "API_BASE_URL": "http://localhost:3000/api/v1",
+  "GOOGLE_SERVER_CLIENT_ID": "237793101316-p1gdddkn6m7h9pn6cc9n4c2imf1v3rlj.apps.googleusercontent.com"
+}
