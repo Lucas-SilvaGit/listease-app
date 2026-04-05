@@ -35,8 +35,8 @@ class ProductsRepository {
   Future<Product> createProduct({
     required String name,
     String? brand,
-    String? category,
-    double? defaultPrice,
+    required String category,
+    required double defaultPrice,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/products',
@@ -57,8 +57,8 @@ class ProductsRepository {
     required int id,
     required String name,
     String? brand,
-    String? category,
-    double? defaultPrice,
+    required String category,
+    required double defaultPrice,
   }) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       '/products/$id',
@@ -79,4 +79,3 @@ class ProductsRepository {
     await _dio.delete<void>('/products/$id');
   }
 }
-

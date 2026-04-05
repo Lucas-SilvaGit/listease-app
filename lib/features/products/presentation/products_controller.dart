@@ -22,8 +22,8 @@ class ProductsController extends AsyncNotifier<List<Product>> {
   Future<Product> create({
     required String name,
     String? brand,
-    String? category,
-    double? defaultPrice,
+    required String category,
+    required double defaultPrice,
   }) async {
     final product = await _repository.createProduct(
       name: name,
@@ -39,8 +39,8 @@ class ProductsController extends AsyncNotifier<List<Product>> {
     required int id,
     required String name,
     String? brand,
-    String? category,
-    double? defaultPrice,
+    required String category,
+    required double defaultPrice,
   }) async {
     await _repository.updateProduct(
       id: id,
@@ -57,4 +57,3 @@ class ProductsController extends AsyncNotifier<List<Product>> {
     await refresh();
   }
 }
-

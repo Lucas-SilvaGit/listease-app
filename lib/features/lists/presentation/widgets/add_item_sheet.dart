@@ -6,7 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/models/product.dart';
 import '../../../../shared/utils/br_currency_input_formatter.dart';
+import '../../../../shared/utils/formatters.dart';
+import '../../../../shared/widgets/searchable_select_field.dart';
 import '../../../products/data/products_repository.dart';
+import '../../../products/presentation/product_categories.dart';
 import '../../../products/presentation/products_controller.dart';
 
 class AddItemSheet extends ConsumerStatefulWidget {
@@ -28,8 +31,11 @@ class AddItemSheet extends ConsumerStatefulWidget {
 }
 
 class _AddItemSheetState extends ConsumerState<AddItemSheet> {
+  static const _newCategoryValue = '__new__';
+
   final _searchController = TextEditingController();
   final _brandController = TextEditingController();
+  final _newCategoryController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   final _priceController = TextEditingController();
 
@@ -37,6 +43,38 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   bool _saving = false;
   List<Product> _results = const [];
   Product? _selectedProduct;
+  String _selectedCategory = '';
+  String? _nameError;
+  String? _categoryError;
+  String? _priceError;
+
+  List<String> get _categories {
+    final products = ref.read(productsControllerProvider).valueOrNull ?? const <Product>[];
+    return {
+      ...defaultProductCategories,
+      ...products
+          .map((product) => product.category)
+          .whereType<String>()
+          .where((category) => category.trim().isNotEmpty),
+    }.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  }
+
+  bool get _isCreatingCategory => _selectedCategory == _newCategoryValue;
+
+  List<SearchableSelectOption<String>> get _categoryOptions => [
+        ..._categories.map(
+          (category) => SearchableSelectOption<String>(
+            value: category,
+            label: category,
+          ),
+        ),
+        const SearchableSelectOption<String>(
+          value: _newCategoryValue,
+          label: 'Nova categoria',
+          searchText: 'nova categoria adicionar criar',
+        ),
+      ];
 
   @override
   void initState() {
@@ -50,6 +88,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     _debounce?.cancel();
     _searchController.dispose();
     _brandController.dispose();
+    _newCategoryController.dispose();
     _quantityController.dispose();
     _priceController.dispose();
     super.dispose();
@@ -76,17 +115,23 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Pesquise um produto e informe apenas quantidade e preço.',
+            'Pesquise por nome ou categoria e informe apenas quantidade e preço.',
             style: TextStyle(color: Color(0xFF697284)),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _searchController,
             autofocus: true,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Buscar produto',
-              prefixIcon: Icon(Icons.search_rounded),
+              prefixIcon: const Icon(Icons.search_rounded),
+              errorText: _nameError,
             ),
+            onChanged: (_) {
+              if (_nameError != null) {
+                setState(() => _nameError = null);
+              }
+            },
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -116,7 +161,12 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                             ? const Color(0xFF2C7BE5).withValues(alpha: 0.08)
                             : null,
                         title: Text(product.name),
-                        subtitle: Text(product.brand ?? 'Sem marca'),
+                        subtitle: Text(
+                          [
+                            if (product.brand != null && product.brand!.isNotEmpty) product.brand,
+                            if (product.category != null && product.category!.isNotEmpty) product.category,
+                          ].whereType<String>().join(' • '),
+                        ),
                         trailing: product.defaultPrice == null
                             ? null
                             : Text('R\$ ${formatCurrencyInput(product.defaultPrice!)}'),
@@ -127,6 +177,11 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                             _priceController.text = product.defaultPrice == null
                                 ? ''
                                 : formatCurrencyInput(product.defaultPrice!);
+                            _selectedCategory = product.category ?? '';
+                            _nameError = null;
+                            _categoryError = null;
+                            _priceError = null;
+                            _newCategoryController.clear();
                           });
                         },
                       );
@@ -140,13 +195,71 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
               decoration: const InputDecoration(labelText: 'Marca opcional'),
             ),
           if (_selectedProduct == null && searchText.isNotEmpty) const SizedBox(height: 12),
+          if (_selectedProduct == null && searchText.isNotEmpty)
+            SearchableSelectField<String>(
+              value: _selectedCategory.isEmpty ? null : _selectedCategory,
+              label: 'Categoria',
+              searchLabel: 'Buscar categoria',
+              options: _categoryOptions,
+              placeholder: 'Selecionar categoria',
+              errorText: _isCreatingCategory ? null : _categoryError,
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                  _categoryError = null;
+                  if (value != _newCategoryValue) {
+                    _newCategoryController.clear();
+                  }
+                });
+              },
+            ),
+          if (_selectedProduct == null && searchText.isNotEmpty && _isCreatingCategory)
+            const SizedBox(height: 12),
+          if (_selectedProduct == null && searchText.isNotEmpty && _isCreatingCategory)
+            TextField(
+              controller: _newCategoryController,
+              decoration: InputDecoration(
+                labelText: 'Nome da nova categoria',
+                errorText: _categoryError,
+              ),
+              onChanged: (_) {
+                if (_categoryError != null) {
+                  setState(() => _categoryError = null);
+                }
+              },
+            ),
+          if (_selectedProduct == null && searchText.isNotEmpty) const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _quantityController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Quantidade'),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F7FB),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: _decreaseQuantity,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _quantityController,
+                          textAlign: TextAlign.center,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            labelText: 'Quantidade',
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _increaseQuantity,
+                        icon: const Icon(Icons.keyboard_arrow_up_rounded),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -157,7 +270,15 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   inputFormatters: const <TextInputFormatter>[
                     BrCurrencyInputFormatter(),
                   ],
-                  decoration: const InputDecoration(labelText: 'Preço'),
+                  decoration: InputDecoration(
+                    labelText: 'Preço',
+                    errorText: _priceError,
+                  ),
+                  onChanged: (_) {
+                    if (_priceError != null) {
+                      setState(() => _priceError = null);
+                    }
+                  },
                 ),
               ),
             ],
@@ -176,10 +297,6 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 220), () {
       _searchProducts(_searchController.text.trim());
-      if (_selectedProduct != null &&
-          !_selectedProduct!.name.toLowerCase().contains(_searchController.text.trim().toLowerCase())) {
-        setState(() => _selectedProduct = null);
-      }
     });
   }
 
@@ -187,17 +304,43 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     final repository = ref.read(productsRepositoryProvider);
     final results = await repository.searchProducts(query);
     if (mounted) {
-      setState(() => _results = results);
+      setState(() {
+        _results = results;
+
+        if (_selectedProduct != null &&
+            results.every((product) => product.id != _selectedProduct!.id)) {
+          _selectedProduct = null;
+        }
+      });
     }
   }
 
   Future<void> _submit() async {
     final name = _selectedProduct?.name ?? _searchController.text.trim();
     final brand = _selectedProduct?.brand ?? _brandController.text.trim();
+    final category = _selectedProduct?.category ??
+        (_isCreatingCategory ? _newCategoryController.text.trim() : _selectedCategory.trim());
     final quantity = double.tryParse(_quantityController.text.replaceAll(',', '.')) ?? 1;
-    final price = parseCurrencyInput(_priceController.text) ?? 0;
+    final typedPrice = parseCurrencyInput(_priceController.text);
+    final fallbackPrice = _selectedProduct?.defaultPrice;
+    final resolvedPrice = typedPrice ?? fallbackPrice;
 
     if (name.isEmpty) {
+      setState(() => _nameError = 'Informe o nome do produto.');
+      return;
+    }
+
+    if (category.isEmpty) {
+      setState(() {
+        _categoryError = _isCreatingCategory
+            ? 'Informe a categoria para adicionar o item.'
+            : 'Selecione uma categoria para adicionar o item.';
+      });
+      return;
+    }
+
+    if (resolvedPrice == null || resolvedPrice <= 0) {
+      setState(() => _priceError = 'Informe um preco valido para adicionar o item.');
       return;
     }
 
@@ -207,7 +350,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
           await ref.read(productsControllerProvider.notifier).create(
                 name: name,
                 brand: brand.isEmpty ? null : brand,
-                defaultPrice: price > 0 ? price : null,
+                category: category,
+                defaultPrice: resolvedPrice,
               );
 
       await widget.onSubmit(
@@ -215,16 +359,30 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
         name: product.name,
         brand: product.brand,
         quantity: quantity,
-        price: price > 0 ? price : (product.defaultPrice ?? 0),
+        price: resolvedPrice,
       );
 
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
     } finally {
       if (mounted) {
         setState(() => _saving = false);
       }
     }
   }
+
+  void _increaseQuantity() {
+    final currentQuantity = _currentQuantity;
+    _quantityController.text = formatQuantity(currentQuantity + 1);
+  }
+
+  void _decreaseQuantity() {
+    final currentQuantity = _currentQuantity;
+    final nextQuantity = currentQuantity <= 1 ? 1.0 : currentQuantity - 1;
+    _quantityController.text = formatQuantity(nextQuantity);
+  }
+
+  double get _currentQuantity =>
+      double.tryParse(_quantityController.text.replaceAll(',', '.')) ?? 1;
 }

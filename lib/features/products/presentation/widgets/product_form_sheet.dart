@@ -19,8 +19,8 @@ class ProductFormSheet extends StatefulWidget {
   final Future<void> Function({
     required String name,
     String? brand,
-    String? category,
-    double? defaultPrice,
+    required String category,
+    required double defaultPrice,
   }) onSubmit;
 
   @override
@@ -29,13 +29,15 @@ class ProductFormSheet extends StatefulWidget {
 
 class _ProductFormSheetState extends State<ProductFormSheet> {
   static const _newCategoryValue = '__new__';
-  static const _noCategoryValue = '__none__';
 
   late final TextEditingController _nameController;
   late final TextEditingController _brandController;
   late final TextEditingController _newCategoryController;
   late final TextEditingController _defaultPriceController;
   String? _selectedCategory;
+  String? _nameError;
+  String? _categoryError;
+  String? _priceError;
   bool _saving = false;
 
   List<String> get _categories {
@@ -62,10 +64,6 @@ class _ProductFormSheetState extends State<ProductFormSheet> {
   bool get _isCreatingCategory => _resolvedSelectedCategory == _newCategoryValue;
 
   List<SearchableSelectOption<String>> get _categoryOptions => [
-        const SearchableSelectOption<String>(
-          value: _noCategoryValue,
-          label: 'Sem categoria',
-        ),
         ..._categories.map(
           (category) => SearchableSelectOption<String>(
             value: category,
@@ -127,7 +125,15 @@ class _ProductFormSheetState extends State<ProductFormSheet> {
           const SizedBox(height: 16),
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Nome'),
+            decoration: InputDecoration(
+              labelText: 'Nome',
+              errorText: _nameError,
+            ),
+            onChanged: (_) {
+              if (_nameError != null) {
+                setState(() => _nameError = null);
+              }
+            },
           ),
           const SizedBox(height: 12),
           TextField(
@@ -141,9 +147,11 @@ class _ProductFormSheetState extends State<ProductFormSheet> {
             searchLabel: 'Buscar categoria',
             options: _categoryOptions,
             placeholder: 'Selecionar categoria',
+            errorText: _isCreatingCategory ? null : _categoryError,
             onChanged: (value) {
               setState(() {
                 _selectedCategory = value;
+                _categoryError = null;
                 if (value != _newCategoryValue) {
                   _newCategoryController.clear();
                 }
@@ -154,7 +162,15 @@ class _ProductFormSheetState extends State<ProductFormSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _newCategoryController,
-              decoration: const InputDecoration(labelText: 'Nome da nova categoria'),
+              decoration: InputDecoration(
+                labelText: 'Nome da nova categoria',
+                errorText: _categoryError,
+              ),
+              onChanged: (_) {
+                if (_categoryError != null) {
+                  setState(() => _categoryError = null);
+                }
+              },
             ),
           ],
           const SizedBox(height: 12),
@@ -164,7 +180,15 @@ class _ProductFormSheetState extends State<ProductFormSheet> {
             inputFormatters: const <TextInputFormatter>[
               BrCurrencyInputFormatter(),
             ],
-            decoration: const InputDecoration(labelText: 'Preço padrão'),
+            decoration: InputDecoration(
+              labelText: 'Preço padrão',
+              errorText: _priceError,
+            ),
+            onChanged: (_) {
+              if (_priceError != null) {
+                setState(() => _priceError = null);
+              }
+            },
           ),
           const SizedBox(height: 20),
           FilledButton(
@@ -178,21 +202,37 @@ class _ProductFormSheetState extends State<ProductFormSheet> {
 
   Future<void> _submit() async {
     final name = _nameController.text.trim();
+    final category = _isCreatingCategory
+        ? _newCategoryController.text.trim()
+        : _resolvedSelectedCategory.trim();
+    final defaultPrice = parseCurrencyInput(_defaultPriceController.text);
+
     if (name.isEmpty) {
+      setState(() => _nameError = 'Informe o nome para salvar o produto.');
+      return;
+    }
+
+    if (category.isEmpty) {
+      setState(() {
+        _categoryError = _isCreatingCategory
+            ? 'Informe a categoria para salvar o produto.'
+            : 'Selecione uma categoria para salvar o produto.';
+      });
+      return;
+    }
+
+    if (defaultPrice == null || defaultPrice <= 0) {
+      setState(() => _priceError = 'Informe um preco valido para salvar o produto.');
       return;
     }
 
     setState(() => _saving = true);
     try {
-      final category = _isCreatingCategory
-          ? _newCategoryController.text.trim()
-          : _resolvedSelectedCategory.trim();
-
       await widget.onSubmit(
         name: name,
         brand: _brandController.text.trim().isEmpty ? null : _brandController.text.trim(),
-        category: category.isEmpty || category == _noCategoryValue ? null : category,
-        defaultPrice: parseCurrencyInput(_defaultPriceController.text),
+        category: category,
+        defaultPrice: defaultPrice,
       );
 
       if (mounted) {
@@ -207,7 +247,7 @@ class _ProductFormSheetState extends State<ProductFormSheet> {
 
   String _deriveSelectedCategory(String? category) {
     if (category == null || category.isEmpty) {
-      return _noCategoryValue;
+      return '';
     }
 
     if (_categories.contains(category)) {

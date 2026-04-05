@@ -21,6 +21,7 @@ class SearchableSelectField<T> extends StatelessWidget {
     this.value,
     this.placeholder = 'Selecionar',
     this.searchLabel = 'Buscar',
+    this.errorText,
   });
 
   final String label;
@@ -29,6 +30,7 @@ class SearchableSelectField<T> extends StatelessWidget {
   final ValueChanged<T> onChanged;
   final String placeholder;
   final String searchLabel;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +62,7 @@ class SearchableSelectField<T> extends StatelessWidget {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
+          errorText: errorText,
           suffixIcon: const Icon(Icons.expand_more_rounded),
         ),
         child: Text(

@@ -119,8 +119,8 @@ class ProductsPage extends ConsumerWidget {
           onSubmit: ({
             required String name,
             String? brand,
-            String? category,
-            double? defaultPrice,
+            required String category,
+            required double defaultPrice,
           }) {
             if (initialProduct == null) {
               return ref.read(productsControllerProvider.notifier).create(
