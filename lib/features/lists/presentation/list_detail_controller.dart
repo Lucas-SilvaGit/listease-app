@@ -102,19 +102,32 @@ class ListDetailController extends FamilyAsyncNotifier<ListDetailState, int> {
       brand: brand,
       quantity: quantity,
       price: price,
+      filter: current.filter,
+      sort: current.sort,
     );
     state = AsyncData(current.copyWith(data: detail));
   }
 
   Future<void> togglePurchased(int itemId) async {
     final current = state.requireValue;
-    final detail = await _repository.togglePurchased(listId: _listId, itemId: itemId);
+    final detail = await _repository.togglePurchased(
+      listId: _listId,
+      itemId: itemId,
+      filter: current.filter,
+      sort: current.sort,
+    );
     state = AsyncData(current.copyWith(data: detail));
   }
 
   Future<void> updatePrice(int itemId, double price) async {
     final current = state.requireValue;
-    final detail = await _repository.updatePrice(listId: _listId, itemId: itemId, price: price);
+    final detail = await _repository.updatePrice(
+      listId: _listId,
+      itemId: itemId,
+      price: price,
+      filter: current.filter,
+      sort: current.sort,
+    );
     state = AsyncData(current.copyWith(data: detail));
   }
 
@@ -124,6 +137,8 @@ class ListDetailController extends FamilyAsyncNotifier<ListDetailState, int> {
       listId: _listId,
       itemId: itemId,
       quantity: quantity,
+      filter: current.filter,
+      sort: current.sort,
     );
     state = AsyncData(current.copyWith(data: detail));
   }

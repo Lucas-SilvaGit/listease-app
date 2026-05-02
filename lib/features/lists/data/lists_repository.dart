@@ -90,12 +90,14 @@ class ListsRepository {
 
     final data = response.data ?? const {};
     final itemsPayload = data['items'] as List<dynamic>? ?? const [];
+    final filteredTotal = (data['total'] as num?)?.toDouble() ?? 0;
 
     return ListDetailData(
       list: ShoppingList.fromJson(data['list'] as Map<String, dynamic>),
       items: itemsPayload
           .map((item) => ListItem.fromJson(item as Map<String, dynamic>))
           .toList(),
+      filteredTotal: filteredTotal,
     );
   }
 
@@ -106,6 +108,8 @@ class ListsRepository {
     String? brand,
     required double quantity,
     required double price,
+    String? filter,
+    String? sort,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/lists/$listId/items',
@@ -120,7 +124,12 @@ class ListsRepository {
       },
     );
 
-    return _resolveSingleItemMutation(listId, response.data ?? const {});
+    return _resolveSingleItemMutation(
+      listId,
+      response.data ?? const {},
+      filter: filter,
+      sort: sort,
+    );
   }
 
   Future<ListDetailData> updateItem({
@@ -129,6 +138,8 @@ class ListsRepository {
     double? quantity,
     double? price,
     bool? purchased,
+    String? filter,
+    String? sort,
   }) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       '/lists/$listId/items/$itemId',
@@ -141,44 +152,70 @@ class ListsRepository {
       },
     );
 
-    return _resolveSingleItemMutation(listId, response.data ?? const {});
+    return _resolveSingleItemMutation(
+      listId,
+      response.data ?? const {},
+      filter: filter,
+      sort: sort,
+    );
   }
 
   Future<ListDetailData> togglePurchased({
     required int listId,
     required int itemId,
+    String? filter,
+    String? sort,
   }) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       '/lists/$listId/items/$itemId/toggle_purchased',
     );
 
-    return _resolveSingleItemMutation(listId, response.data ?? const {});
+    return _resolveSingleItemMutation(
+      listId,
+      response.data ?? const {},
+      filter: filter,
+      sort: sort,
+    );
   }
 
   Future<ListDetailData> updatePrice({
     required int listId,
     required int itemId,
     required double price,
+    String? filter,
+    String? sort,
   }) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       '/lists/$listId/items/$itemId/update_price',
       data: {'price': price},
     );
 
-    return _resolveSingleItemMutation(listId, response.data ?? const {});
+    return _resolveSingleItemMutation(
+      listId,
+      response.data ?? const {},
+      filter: filter,
+      sort: sort,
+    );
   }
 
   Future<ListDetailData> updateQuantity({
     required int listId,
     required int itemId,
     required double quantity,
+    String? filter,
+    String? sort,
   }) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       '/lists/$listId/items/$itemId/update_quantity',
       data: {'quantity': quantity},
     );
 
-    return _resolveSingleItemMutation(listId, response.data ?? const {});
+    return _resolveSingleItemMutation(
+      listId,
+      response.data ?? const {},
+      filter: filter,
+      sort: sort,
+    );
   }
 
   Future<void> deleteItem({
@@ -199,10 +236,17 @@ class ListsRepository {
   Future<ListDetailData> _resolveSingleItemMutation(
     int listId,
     Map<String, dynamic> payload,
+    {
+    String? filter,
+    String? sort,
+    }
   ) async {
     final list = ShoppingList.fromJson(payload['list'] as Map<String, dynamic>);
-    final detail = await fetchListDetail(listId);
-    return ListDetailData(list: list, items: detail.items);
+    final detail = await fetchListDetail(listId, filter: filter, sort: sort);
+    return ListDetailData(
+      list: list,
+      items: detail.items,
+      filteredTotal: detail.filteredTotal,
+    );
   }
 }
-

@@ -69,6 +69,7 @@ class ListDetailPage extends ConsumerWidget {
           data: (state) {
             final list = state.data.list;
             final items = state.data.items;
+            final totalValue = state.filter == 'all' ? list.totalAmount : state.data.filteredTotal;
 
             return RefreshIndicator(
               onRefresh: controller.refresh,
@@ -99,7 +100,7 @@ class ListDetailPage extends ConsumerWidget {
                             Expanded(
                               child: _SummaryMetric(
                                 label: 'Total',
-                                value: formatCurrency(list.totalAmount),
+                                value: formatCurrency(totalValue),
                               ),
                             ),
                             const SizedBox(width: 12),
