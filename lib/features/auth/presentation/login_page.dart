@@ -16,6 +16,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
   final _passwordConfirmationController = TextEditingController();
   String _mode = 'login';
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -142,13 +143,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _passwordController,
-                          obscureText: true,
+                          obscureText: _obscurePassword,
                           textInputAction: isRegister
                               ? TextInputAction.next
                               : TextInputAction.done,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Senha',
-                            prefixIcon: Icon(Icons.lock_outline_rounded),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              ),
+                              onPressed: (){
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            )
+                            // prefixIcon: Icon(Icons.lock_outline_rounded),
                           ),
                         ),
                         if (isRegister) ...[
